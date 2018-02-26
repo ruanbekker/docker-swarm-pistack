@@ -1,0 +1,28 @@
+version: "3.2"
+
+services:
+  traefik:
+    image: arm32v6/traefik
+    command: --docker --docker.swarmmode --docker.watch --logLevel=DEBUG --web
+    networks:
+      - docknet
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    ports:
+      - 80:80
+      - 8080:8080
+    deploy:
+      mode: replicated
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+      placement:
+        constraints: [node.role == manager]
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50k"
+
+networks:
+  docknet:
+    external: true
