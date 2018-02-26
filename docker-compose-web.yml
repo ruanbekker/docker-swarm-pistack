@@ -1,0 +1,125 @@
+version: "3.2"
+
+services:
+  blog:
+    image: alexellis2/ghost-on-docker:armv7
+    networks:
+      - docknet
+    volumes:
+      - type: bind
+        source: /mnt/volumes/ghost/content/data
+        target: /var/www/ghost/content/data
+    deploy:
+      replicas: 1
+      labels:
+        - "traefik.backend=blog"
+        - "traefik.port=2368"
+        - "traefik.frontend.rule=Host:posts.domain.com,blog.domain.com"
+      update_config:
+        parallelism: 2
+        delay: 10s
+      restart_policy:
+        condition: on-failure
+      placement:
+        constraints: [node.role == worker]
+    healthcheck:
+      test: nc -vz 127.0.0.1 2368 || exit 1
+      interval: 30s
+      timeout: 3s
+      retries: 3
+
+  vizualizor:
+    image: alexellis2/visualizer-arm
+    networks:
+      - docknet
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    deploy:
+      replicas: 1
+      labels:
+        - "traefik.backend=vizualizor"
+        - "traefik.port=8080"
+        - "traefik.frontend.rule=Host:viz.domain.com"
+      placement:
+        constraints: [node.role == manager]
+
+  landing:
+    image: registry.gitlab.com/rbekker87/docker/pistack-landing:v1
+    networks:
+      - docknet
+    deploy:
+      replicas: 1
+      labels:
+        - "traefik.backend=landing"
+        - "traefik.port=80"
+        - "traefik.frontend.rule=Host:www.domain.com"
+      update_config:
+        parallelism: 2
+        delay: 10s
+      restart_policy:
+        condition: on-failure
+      placement:
+        constraints: [node.role == worker]
+
+  whoami:
+    image: rbekker87/golang-whoami:alpine-amrhf
+    networks:
+      - docknet
+    deploy:
+      replicas: 3
+      labels:
+        - "traefik.backend=whoami"
+        - "traefik.port=80"
+        - "traefik.frontend.rule=Host:whoami.domain.com"
+      update_config:
+        parallelism: 1
+        delay: 10s
+      restart_policy:
+        condition: on-failure
+      placement:
+        constraints: [node.role == worker]
+    healthcheck:
+      test: nc -vz 127.0.0.1 80 || exit 1
+      interval: 60s
+      timeout: 3s
+      retries: 3
+
+  kittens:
+    image: alexellis2/kittens-armhf
+    networks:
+      - docknet
+    deploy:
+      replicas: 3
+      labels:
+        - "traefik.backend=kittens"
+        - "traefik.port=5000"
+        - "traefik.frontend.rule=Host:kittens.domain.com"
+      restart_policy:
+        condition: on-failure
+
+  flask-redis:
+    image: rbekker87/flask-redis:alpine-armhf
+    networks:
+      - docknet
+    deploy:
+      replicas: 3
+      labels:
+        - "traefik.backend=flask-redis"
+        - "traefik.port=5000"
+        - "traefik.frontend.rule=Host:flask-redis.domain.com"
+      update_config:
+        parallelism: 1
+        delay: 10s
+      restart_policy:
+        condition: on-failure
+      placement:
+        constraints: [node.role == worker]
+    healthcheck:
+      test: nc -vz 127.0.0.1 5000 || exit 1
+      interval: 60s
+      timeout: 3s
+      retries: 3
+
+networks:
+  docknet:
+    external: true
