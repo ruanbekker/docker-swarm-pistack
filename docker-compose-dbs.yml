@@ -15,6 +15,29 @@ services:
       timeout: 3s
       retries: 3
 
+  minio:
+    image: pixelchrome/minio-arm
+    networks:
+      - docknet
+    deploy:
+      mode: replicated
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+      labels:
+        - "traefik.enable=true"
+        - "traefik.backend=minio"
+        - "traefik.port=9000"
+        - "traefik.frontend.rule=Host:minio.domain.com"
+    command: server /data
+    environment:
+      - MINIO_ACCESS_KEY=APPKEY
+      - MINIO_SECRET_KEY=APPSECRET
+    volumes:
+      - type: bind
+        source: /mnt/volumes/minio/minio-data:/data
+        target: /mnt/volumes/mini/minio-config:/root/.minio
+
 networks:
   docknet:
     external: true
